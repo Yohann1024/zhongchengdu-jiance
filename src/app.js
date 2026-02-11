@@ -19,18 +19,15 @@ const MOOD_IMAGE_MAP = {
   smile: './img/开心.png',
   angry: './img/生气.png'
 };
-const HIGH_THRESHOLD = 80;
-const LOW_THRESHOLD = 20;
-const HIGH_DURATION_MS = 10_000;
-const LOW_DURATION_MS = 5_000;
+const ANGRY_THRESHOLD = 80;
 
 let score = 0;
 let baselineHipY = null;
 let frameCount = 0;
-let highStartMs = null;
-let lowStartMs = null;
 let currentMood = 'none';
 let hasStarted = false;
+let latestCelebrating = false;
+let scoreLoopId = null;
 
 function updateScoreUI() {
   scoreValueEl.textContent = String(score);
@@ -49,14 +46,14 @@ function setMood(mood) {
   if (mood === 'smile') {
     moodImageEl.src = MOOD_IMAGE_MAP.smile;
     moodImageEl.classList.add('show');
-    moodLabelEl.textContent = '当前情绪：图1 微笑';
+    moodLabelEl.textContent = '当前情绪：将军开心';
     return;
   }
 
   if (mood === 'angry') {
     moodImageEl.src = MOOD_IMAGE_MAP.angry;
     moodImageEl.classList.add('show');
-    moodLabelEl.textContent = '当前情绪：图2 生气';
+    moodLabelEl.textContent = '当前情绪：将军生气';
     return;
   }
 
@@ -65,23 +62,28 @@ function setMood(mood) {
   moodLabelEl.textContent = '当前情绪：暂无';
 }
 
-function updateMoodTimer(nowMs) {
-  if (score >= HIGH_THRESHOLD) {
-    if (highStartMs === null) highStartMs = nowMs;
-    lowStartMs = null;
-    if (nowMs - highStartMs >= HIGH_DURATION_MS) setMood('smile');
+function updateMoodByScore() {
+  if (score >= 100) {
+    setMood('smile');
     return;
   }
 
-  if (score <= LOW_THRESHOLD) {
-    if (lowStartMs === null) lowStartMs = nowMs;
-    highStartMs = null;
-    if (nowMs - lowStartMs >= LOW_DURATION_MS) setMood('angry');
+  if (score <= ANGRY_THRESHOLD) {
+    setMood('angry');
     return;
   }
 
-  highStartMs = null;
-  lowStartMs = null;
+  setMood('none');
+}
+
+function runScoreLoop() {
+  if (!hasStarted) return;
+
+  score = nextScore(score, latestCelebrating);
+  updateScoreUI();
+  updateMoodByScore();
+
+  scoreLoopId = window.requestAnimationFrame(runScoreLoop);
 }
 
 async function tryPlayMusic() {
@@ -166,19 +168,14 @@ async function start() {
       drawPose(results);
 
       if (!results.poseLandmarks) {
-        score = nextScore(score, false);
+        latestCelebrating = false;
         setStatus('未检测到人体，请站到画面中央', true);
-        updateScoreUI();
-        updateMoodTimer(Date.now());
         return;
       }
 
       const poseShape = toPoseShape(results.poseLandmarks);
       const celebrating = detectCelebrationPose(poseShape);
-
-      score = nextScore(score, celebrating);
-      updateScoreUI();
-      updateMoodTimer(Date.now());
+      latestCelebrating = celebrating;
 
       if (celebrating) {
         setStatus('动作达标！忠诚度回满 100');
@@ -196,12 +193,20 @@ async function start() {
     });
 
     await camera.start();
+    if (scoreLoopId === null) {
+      scoreLoopId = window.requestAnimationFrame(runScoreLoop);
+    }
     setStatus('检测中');
   } catch (error) {
     setStatus('摄像头启动失败，请检查权限或浏览器设置', true);
     startButtonEl.disabled = false;
     startButtonEl.textContent = '开始检测';
     hasStarted = false;
+    latestCelebrating = false;
+    if (scoreLoopId !== null) {
+      window.cancelAnimationFrame(scoreLoopId);
+      scoreLoopId = null;
+    }
     console.error(error);
   }
 }
@@ -214,6 +219,11 @@ startButtonEl.addEventListener('click', () => {
     startButtonEl.disabled = false;
     startButtonEl.textContent = '开始检测';
     hasStarted = false;
+    latestCelebrating = false;
+    if (scoreLoopId !== null) {
+      window.cancelAnimationFrame(scoreLoopId);
+      scoreLoopId = null;
+    }
   });
 });
 
