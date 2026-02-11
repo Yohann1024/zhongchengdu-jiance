@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>忠诚度测试</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel">
+        <h1>忠诚度测试</h1>
+        <p id="statusText">点击“开始检测”后允许摄像头权限</p>
+
+        <div class="score-wrap">
+          <div class="score-label">忠诚度</div>
+          <div class="score-value" id="scoreValue">0</div>
+          <div class="bar-bg">
+            <div class="bar-fill" id="scoreBar"></div>
+          </div>
+        </div>
+
+        <div class="mood-wrap">
+          <div class="mood-label" id="moodLabel">当前情绪：暂无</div>
+          <img id="moodImage" alt="情绪图" />
+        </div>
+
+        <button id="startButton">开始检测</button>
+        <p class="hint">规则：忠诚度连续高分 10 秒显示图1；连续低分 5 秒显示图2。</p>
+      </section>
+
+      <section class="camera-wrap">
+        <video id="video" playsinline></video>
+        <canvas id="overlay"></canvas>
+      </section>
+    </main>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
